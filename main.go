@@ -19,7 +19,6 @@ func createBuffer(outputFilePath string, term bool) (*bufio.Writer, error) {
 		return nil, err
 	}
 
-	defer outputFile.Close()
 	if term {
 		return bufio.NewWriter(io.MultiWriter(outputFile, os.Stdout)), nil
 	}
