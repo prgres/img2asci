@@ -1,8 +1,6 @@
 package main
 
 import (
-	"bufio"
-	"io"
 	"log"
 	"os"
 	"strings"
@@ -11,41 +9,6 @@ import (
 	"github.com/prgres/img2asci/pkg/img2asci"
 	"github.com/urfave/cli/v2"
 )
-
-func createBuffer(outputFilePath string, term bool) (*bufio.Writer, error) {
-	log.Println("Creating output file:", outputFilePath)
-	outputFile, err := os.OpenFile(outputFilePath, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0666)
-	if err != nil {
-		return nil, err
-	}
-
-	if term {
-		return bufio.NewWriter(io.MultiWriter(outputFile, os.Stdout)), nil
-	}
-
-	return bufio.NewWriter(io.MultiWriter(outputFile)), nil
-}
-
-func process(sourceFilePath, outputFilePath string, pv *img2asci.ProcessingValues, term bool) error {
-	img, err := img2asci.LoadImage(sourceFilePath)
-	if err != nil {
-		return err
-	}
-
-	buffer, err := createBuffer(outputFilePath, term)
-	if err != nil {
-		return err
-	}
-	defer buffer.Flush()
-
-	buf, err := pv.Process(img, buffer)
-	if err != nil {
-		return err
-	}
-
-	buf.Flush()
-	return nil
-}
 
 func main() {
 	flags := []cli.Flag{
@@ -115,10 +78,12 @@ func main() {
 				return cli.ShowAppHelp(c)
 			}
 
-			return process(
-				strings.TrimSpace(c.Args().First()),
-				c.String("outputFilePath"),
-				&img2asci.ProcessingValues{
+			inputFile := strings.TrimSpace(c.Args().First())
+			outputFile := c.String("outputFilePath")
+
+			img := &img2asci.Config{
+				Term: c.Bool("term"),
+				ProcessingValues: &img2asci.ProcessingValues{
 					Width:              c.Int("width"),
 					Height:             c.Int("height"),
 					Sharp:              c.Float64("sharp"),
@@ -126,8 +91,9 @@ func main() {
 					Contrast:           c.Float64("contrast"),
 					GrayScaleAsciTable: c.String("grayScaleAsciTable"),
 				},
-				c.Bool("term"),
-			)
+			}
+
+			return img.Process(inputFile, outputFile)
 		},
 	}
 
